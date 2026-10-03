@@ -521,6 +521,9 @@ class GridPathFollowerNode(Node):
         # 1. Get the closest graph node to the robot’s current starting position (ns)
         # 2. Get the closest graph node to the goal position (ng)
         # 3. Run A* to get a path (sequence of graph nodes) from ns → ng
+        ns = self.nearest_graph_coord(start_pose)
+        ng = self.nearest_graph_coord(self.goal_pos)
+        grid_path = self.astar_path(self.graph, ns, ng)
 
         path: List[Coord] = [start_pose]
 
@@ -529,6 +532,19 @@ class GridPathFollowerNode(Node):
         # 6. Append all waypoints from the A* grid path (avoiding duplicate points)
         # 7. Ensure the final node (ng) is included
         # 8. Ensure the actual goal position is included as the last waypoint
+        if not grid_path:
+            self.get_logger().warn(f"No route from {ns} to {ng}.")
+            return path
+
+        def add(p: Coord):
+            if math.dist(path[-1], p) > 1e-9:
+                path.append(p)
+
+        add(ns)
+        for p in grid_path:
+            add(p)
+        add(ng)
+        add(self.goal_pos)
 
         # Return the full planned path as a list of coordinates
         return path
@@ -738,6 +754,11 @@ class GridPathFollowerNode(Node):
             # ~1 line:  Set start_from to the previous node
             # ~1 line:  Replan the global path from new start point and store it in self.full_path.
             # ~1 line:  Set the mode back to FOLLOW
+            if self.block_edge and all(p in self.graph.coord2idx for p in self.block_edge):
+                self.graph.remove_edge(*self.block_edge)
+            start_from = self.prev_node
+            self.path_plan(start_from)
+            self._set_mode('FOLLOW')
             self.draw_scene(robot=robot_position)
             return
 
@@ -745,7 +766,7 @@ class GridPathFollowerNode(Node):
         if self.mode == 'BACKTRACK':
             # TODO: YOUR CODE HERE
             # ~1 line: set a temporary goal as the previous node
-            temp_goal = ...
+            temp_goal = self.prev_node
 
             back_path = [robot_position, temp_goal]
             target = lookahead_point(back_path, robot_position, self.lookahead_dist)
@@ -755,6 +776,9 @@ class GridPathFollowerNode(Node):
 
             # TODO: YOUR CODE HERE: ~3 lines
             # If the distance between the current turtlebot position ('robot') and temp_goal is less than the tolerance ('self.node_tol'), stop the turtlebot immediately and set the mode to REPLAN
+            if math.dist(robot_position, temp_goal) < self.node_tol:
+                self.publish_stop()
+                self._set_mode('REPLAN')
             return
 
         # --- MODE: FOLLOW ---
@@ -765,6 +789,10 @@ class GridPathFollowerNode(Node):
             # 2. set 'prev_node' to 'ga' 
             # 3. set 'block_edge' to '(ga, gb)' 
             # 4. set mode to 'BACKTRACK'
+            self.publish_stop()
+            self.prev_node = ga
+            self.block_edge = (ga, gb)
+            self._set_mode('BACKTRACK')
             self.draw_scene(robot=robot_position)
             return
             
