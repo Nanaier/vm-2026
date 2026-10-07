@@ -345,9 +345,9 @@ class GridPathFollowerNode(Node):
         self.goal_tol = 0.05
         self.node_tol = 0.05
         # TODO: YOUR CODE HERE: ~3 lines: set the lookahead distance for pure-pursuit based control, and the maximum allowed linear and angular velocities 
-        self.lookahead_dist = ...
-        self.v_max = ...
-        self.w_max = ...
+        self.lookahead_dist = 0.25
+        self.v_max = 0.3
+        self.w_max = 1.5
         # ...
         # TODO: YOUR CODE HERE: ~1-2 lines: set your PID controller/s for linear/angular motion
         self.pid_angular  = PID(kp=..., ki=..., kd=..., i_limit=...)
@@ -596,7 +596,21 @@ class GridPathFollowerNode(Node):
         Returns:
             True if passable; False otherwise.
         """
-        return False
+        if not self.scan:
+            return True
+            
+        rel_angle = angle_wrap(seg_dir_yaw - self.yaw)
+        angle_min = self.scan.angle_min
+        angle_inc = self.scan.angle_increment
+        
+        for i, r in enumerate(self.scan.ranges):
+            if math.isinf(r) or math.isnan(r) or r < self.scan.range_min:
+                continue
+            ray_angle = angle_wrap(angle_min + i * angle_inc)
+            if abs(angle_wrap(ray_angle - rel_angle)) < math.radians(15):
+                if r < 0.38:  # Nodes are ~1.42m apart, so an obstacle in the middle is detected under 0.6m
+                    return False
+        return True
     
     # --- TODO: YOUR CODE HERE: Implement the function to generate the lookahead point away from obstacles  ---
     def obstacle_avoided_target(self, robot_pos: Coord, seg_dir_yaw: float) -> Coord:
