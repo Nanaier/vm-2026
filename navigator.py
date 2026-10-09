@@ -350,7 +350,7 @@ class GridPathFollowerNode(Node):
         self.w_max = 1.5
         # ...
         # TODO: YOUR CODE HERE: ~1-2 lines: set your PID controller/s for linear/angular motion
-        self.pid_angular  = PID(kp=..., ki=..., kd=..., i_limit=...)
+        self.pid_angular = PID(kp=1.5, ki=0.0, kd=0.05, i_limit=0.5)
 
         # --- Helpers to halt turtlebot ---
         self.dwell_s = 0.5
@@ -643,6 +643,27 @@ class GridPathFollowerNode(Node):
         Returns:
             (v_cmd, w_cmd): linear and angular velocity commands.
         """
+
+        dx = target[0] - robot_pos[0]
+        dy = target[1] - robot_pos[1]
+
+        target_heading = math.atan2(dy, dx)
+        heading_error = angle_wrap(target_heading - robot_h)
+
+        local_y = -math.sin(robot_h) * dx + math.cos(robot_h) * dy
+
+        lookahead_sq = max(Ld * Ld, 1e-6)
+        curvature = 2.0 * local_y / lookahead_sq
+
+        v_cmd = self.v_max * max(0.0, math.cos(heading_error))
+
+        w_pid = self.pid_angular.update(heading_error, dt)
+        w_pursuit = v_cmd * curvature
+
+        w_cmd = 0.5 * w_pursuit + 0.5 * w_pid
+        v_cmd = float(np.clip(v_cmd, 0.0, self.v_max))
+        w_cmd = float(np.clip(w_cmd, -self.w_max, self.w_max))
+        
         return v_cmd, w_cmd
 
     # --- Publisher helpers ---
