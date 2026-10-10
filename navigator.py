@@ -626,6 +626,65 @@ class GridPathFollowerNode(Node):
         Returns:
             Target (x, y) in world/odom frame.
         """
+        target = lookahead_point(
+        self.full_path, robot_pos, self.lookahead_dist
+    )
+
+        if self.scan is None:
+            return target
+
+        front_limit = 0.65
+        front_angle = math.radians(15)
+
+        side_min_angle = math.radians(20)
+        side_max_angle = math.radians(75)
+
+        left_min = float('inf')
+        right_min = float('inf')
+        obstacle_ahead = False
+
+        for i, r in enumerate(self.scan.ranges):
+
+            if r < self.scan.range_min or r > self.scan.range_max:
+                continue
+
+            scan_angle = self.scan.angle_min + i * self.scan.angle_increment
+
+            rel_angle = angle_wrap(
+                scan_angle + self.yaw - seg_dir_yaw)
+
+            if abs(rel_angle) < front_angle:
+                if r < front_limit:
+                    obstacle_ahead = True
+
+            elif side_min_angle < rel_angle < side_max_angle:
+                left_min = min(left_min, r)
+
+            elif -side_max_angle < rel_angle < -side_min_angle:
+                right_min = min(right_min, r)
+
+        if not obstacle_ahead:
+            return target
+
+        shift = 0.08
+
+        if left_min > right_min + 0.12:
+            shift_direction = 1.0
+
+        elif right_min > left_min + 0.12:
+            shift_direction = -1.0
+
+        else:
+            return target
+
+        normal_x = -math.sin(seg_dir_yaw)
+        normal_y = math.cos(seg_dir_yaw)
+
+        target = (
+            target[0] + shift_direction * normal_x * shift,
+            target[1] + shift_direction * normal_y * shift
+        )
+
         return target
     
     # --- TODO: YOUR CODE HERE: controller used for TurtleBot ---
