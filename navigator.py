@@ -608,7 +608,7 @@ class GridPathFollowerNode(Node):
                 continue
             ray_angle = angle_wrap(angle_min + i * angle_inc)
             if abs(angle_wrap(ray_angle - rel_angle)) < math.radians(15):
-                if r < 0.38:  # Nodes are ~1.42m apart, so an obstacle in the middle is detected under 0.6m
+                if r < 0.2: 
                     return False
         return True
     
@@ -626,12 +626,7 @@ class GridPathFollowerNode(Node):
         Returns:
             Target (x, y) in world/odom frame.
         """
-        target = lookahead_point(
-        self.full_path, robot_pos, self.lookahead_dist
-    )
-
-        if self.scan is None:
-            return target
+       target = lookahead_point(self.full_path, robot_pos, self.lookahead_dist)
 
         front_limit = 0.65
         front_angle = math.radians(15)
@@ -645,13 +640,15 @@ class GridPathFollowerNode(Node):
 
         for i, r in enumerate(self.scan.ranges):
 
-            if r < self.scan.range_min or r > self.scan.range_max:
+            if math.isinf(r) or math.isnan(r) or r < self.scan.range_min:
                 continue
+
+            #if r < self.scan.range_min or r > self.scan.range_max:
+             #   continue
 
             scan_angle = self.scan.angle_min + i * self.scan.angle_increment
 
-            rel_angle = angle_wrap(
-                scan_angle + self.yaw - seg_dir_yaw)
+            rel_angle = angle_wrap(scan_angle + self.yaw - seg_dir_yaw)
 
             if abs(rel_angle) < front_angle:
                 if r < front_limit:
