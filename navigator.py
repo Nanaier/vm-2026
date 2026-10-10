@@ -19,7 +19,6 @@ Coord = Tuple[float, float]
 Index = Tuple[int, int]
 DIRS = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
 
-
 # ---------------- Grid graph ----------------
 @dataclass
 class GridGraph:
@@ -29,9 +28,9 @@ class GridGraph:
     """
     H: int
     W: int
-    positions: Dict[Index, Coord]  # (r,c) -> (x,y)
-    coord2idx: Dict[Coord, Index]  # (x,y) -> (r,c)
-    adj: Dict[Index, Set[Index]]  # adjacency
+    positions: Dict[Index, Coord]   # (r,c) -> (x,y)
+    coord2idx: Dict[Coord, Index]   # (x,y) -> (r,c)
+    adj: Dict[Index, Set[Index]]    # adjacency
 
     @classmethod
     def from_node_graph(cls, node_graph: List[List[List[float]]]):
@@ -161,14 +160,11 @@ class GridGraph:
         ymin, ymax = min(ys), max(ys)
         pad_x = 0.05 * (xmax - xmin if xmax > xmin else 1.0)
         pad_y = 0.05 * (ymax - ymin if ymax > ymin else 1.0)
-        xmin -= pad_x;
-        xmax += pad_x
-        ymin -= pad_y;
-        ymax += pad_y
+        xmin -= pad_x; xmax += pad_x
+        ymin -= pad_y; ymax += pad_y
         xr = xmax - xmin if xmax > xmin else 1.0
         yr = ymax - ymin if ymax > ymin else 1.0
         S = img_size - 2 * margin
-
         def to_px(x, y):
             nx = (x - xmin) / xr
             ny = (y - ymin) / yr
@@ -177,7 +173,6 @@ class GridGraph:
             u = margin + int(nx * S)
             v = margin + int((1.0 - ny) * S)
             return (u, v)
-
         return to_px, img_size, margin
 
     def base_image(self, extra_points: Optional[List[Coord]] = None,
@@ -198,7 +193,6 @@ class GridGraph:
         img = np.ones((H, H, 3), dtype=np.uint8) * 255
         return img, to_px
 
-
 # -------- path util ----------
 def nearest_point_on_polyline(path: List[Coord], p: Coord) -> Tuple[float, int, Coord]:
     """
@@ -216,37 +210,23 @@ def nearest_point_on_polyline(path: List[Coord], p: Coord) -> Tuple[float, int, 
     """
     if len(path) == 1:
         return 0.0, 0, path[0]
-
-    def dot(a, b):
-        return a[0] * b[0] + a[1] * b[1]
-
-    def sub(a, b):
-        return (a[0] - b[0], a[1] - b[1])
-
-    def add(a, b):
-        return (a[0] + b[0], a[1] + b[1])
-
+    def dot(a, b): return a[0]*b[0] + a[1]*b[1]
+    def sub(a, b): return (a[0]-b[0], a[1]-b[1])
+    def add(a, b): return (a[0]+b[0], a[1]+b[1])
     cum = [0.0]
     for i in range(1, len(path)):
-        cum.append(cum[-1] + math.dist(path[i - 1], path[i]))
-    best_s = 0.0;
-    best_pt = path[0];
-    best_seg = 0
+        cum.append(cum[-1] + math.dist(path[i-1], path[i]))
+    best_s = 0.0; best_pt = path[0]; best_seg = 0
     for i in range(1, len(path)):
-        a = path[i - 1];
-        b = path[i]
-        ab = sub(b, a);
-        ap = sub(p, a)
+        a = path[i-1]; b = path[i]
+        ab = sub(b, a); ap = sub(p, a)
         ab2 = dot(ab, ab) if ab != (0.0, 0.0) else 1e-9
         t = max(0.0, min(1.0, dot(ap, ab) / ab2))
-        proj = add(a, (ab[0] * t, ab[1] * t))
-        s_here = cum[i - 1] + math.dist(a, proj)
+        proj = add(a, (ab[0]*t, ab[1]*t))
+        s_here = cum[i-1] + math.dist(a, proj)
         if i == 1 or math.dist(p, proj) < math.dist(p, best_pt):
-            best_s = s_here;
-            best_pt = proj;
-            best_seg = i - 1
+            best_s = s_here; best_pt = proj; best_seg = i - 1
     return best_s, best_seg, best_pt
-
 
 def lookahead_point(path: List[Coord], p: Coord, Ld: float) -> Coord:
     """
@@ -265,19 +245,17 @@ def lookahead_point(path: List[Coord], p: Coord, Ld: float) -> Coord:
     s, _, _ = nearest_point_on_polyline(path, p)
     cum = [0.0]
     for i in range(1, len(path)):
-        cum.append(cum[-1] + math.dist(path[i - 1], path[i]))
+        cum.append(cum[-1] + math.dist(path[i-1], path[i]))
     target_s = s + Ld
     if target_s >= cum[-1]: return path[-1]
     for i in range(1, len(path)):
         if cum[i] >= target_s:
-            seg_s = target_s - cum[i - 1]
-            a = path[i - 1];
-            b = path[i]
+            seg_s = target_s - cum[i-1]
+            a = path[i-1]; b = path[i]
             seg_len = math.dist(a, b)
             t = seg_s / seg_len
-            return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+            return (a[0] + (b[0]-a[0]) * t, a[1] + (b[1]-a[1]) * t)
     return path[-1]
-
 
 def angle_wrap(a: float) -> float:
     """
@@ -293,7 +271,6 @@ def angle_wrap(a: float) -> float:
     while a < -math.pi: a += 2.0 * math.pi
     return a
 
-
 def yaw_from_quat(x, y, z, w) -> float:
     """
     Extract yaw (heading about +Z) from a quaternion.
@@ -304,10 +281,9 @@ def yaw_from_quat(x, y, z, w) -> float:
     Returns:
         Yaw in radians in the odometry frame
     """
-    siny_cosp = 2.0 * (w * z + x * y)
-    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+    siny_cosp = 2.0 * (w*z + x*y)
+    cosy_cosp = 1.0 - 2.0 * (y*y + z*z)
     return math.atan2(siny_cosp, cosy_cosp)
-
 
 # --------- Simple PID ----------
 @dataclass
@@ -350,7 +326,6 @@ class PID:
         self.prev_e = e
         return self.kp * e + self.ki * self.i + self.kd * dterm
 
-
 # --------------- Node ---------------
 class GridPathFollowerNode(Node):
     """
@@ -359,7 +334,6 @@ class GridPathFollowerNode(Node):
     - Follows the path with a suitable control mechanism,
     - Backtracks and replans if an obstacle is not passable
     """
-
     def __init__(self):
         """
         Initialize parameters, build graph, subscribe/publish ROS topics,
@@ -370,13 +344,13 @@ class GridPathFollowerNode(Node):
         # --- Motion and geometry parameters ---
         self.goal_tol = 0.05
         self.node_tol = 0.05
-        # TODO: YOUR CODE HERE: ~3 lines: set the lookahead distance for pure-pursuit based control, and the maximum allowed linear and angular velocities
+        # TODO: YOUR CODE HERE: ~3 lines: set the lookahead distance for pure-pursuit based control, and the maximum allowed linear and angular velocities 
         self.lookahead_dist = 0.25
         self.v_max = 0.3
-        self.w_max = 2.5
+        self.w_max = 1.5
         # ...
         # TODO: YOUR CODE HERE: ~1-2 lines: set your PID controller/s for linear/angular motion
-        self.pid_angular = PID(kp=3, ki=0.1, kd=0.1, i_limit=0.5)
+        self.pid_angular = PID(kp=1.5, ki=0.0, kd=0.05, i_limit=0.5)
 
         # --- Helpers to halt turtlebot ---
         self.dwell_s = 0.5
@@ -384,15 +358,13 @@ class GridPathFollowerNode(Node):
 
         # --- Start and goal positions. TODO: OPTIONAL: modify for testing purposes as needed ---
         self.start_pos = (0.0, 0.0)
-        self.goal_pos = (7.120, -5.696)
+        self.goal_pos  = (7.120, -5.696)
 
         # --- State ---
-        self.pose_ready = False  # to check if odometry values are being received
-        self.x = 0.0;
-        self.y = 0.0;
-        self.yaw = 0.0  # turtlebot pose
-        self.scan: Optional[LaserScan] = None  # stores the latest scan
-        self.mode = 'None'  # operation mode
+        self.pose_ready = False                    # to check if odometry values are being received
+        self.x = 0.0; self.y = 0.0; self.yaw = 0.0 # turtlebot pose 
+        self.scan: Optional[LaserScan] = None      # stores the latest scan
+        self.mode = 'None'                         # operation mode 
         self.last_t = self._now()
 
         # --- Grid (5x5) ---
@@ -415,16 +387,16 @@ class GridPathFollowerNode(Node):
                     adj={(0, 0): {(1, 0), (0, 1)}, (0, 1): {(0, 2), (1, 1), (0, 0)}, (0, 2): {(0, 1), (1, 2), (0, 3)}, ........., (4, 4): {(3, 4), (4, 3)}}
                    )
         """
-        self.full_path: List[Coord] = []
-        self.prev_node: Optional[Coord] = None
+        self.full_path:  List[Coord] = []
+        self.prev_node : Optional[Coord] = None
         self.block_edge: Optional[Tuple[Coord, Coord]] = None
-        # TODO: OPTIONAL: you can manually remove edges here using 'self.graph.remove_edge([..., ...], [..., ...]))
+        #TODO: OPTIONAL: you can manually remove edges here using 'self.graph.remove_edge([..., ...], [..., ...]))
 
         # --- ROS I/O ---
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 20)
         self.odom_sub = self.create_subscription(Odometry, "/odom", self.odom_cb, 20)
         self.scan_sub = self.create_subscription(LaserScan, "/scan", self.scan_cb, 20)
-        self.timer = self.create_timer(1.0 / 20.0, self.control_step)
+        self.timer = self.create_timer(1.0/20.0, self.control_step)
 
         # --- Modes of operation ---
         """
@@ -433,7 +405,7 @@ class GridPathFollowerNode(Node):
             3. REPLAN: recalculate A* to get new path to the goal from the current node
             4. DONE: when goal has been reached
         """
-        self._set_mode('FOLLOW')
+        self._set_mode('FOLLOW') 
 
         # --- Vizualization ---
         self.win = "Grid A* Path Follower"
@@ -476,7 +448,7 @@ class GridPathFollowerNode(Node):
         Args:
             graph: GridGraph instance.
             start: (x, y) start coordinate
-            goal:  (x, y) goal coordinate
+            goal:  (x, y) goal coordinate 
 
         Returns:
             List of (x, y) coordinates along the path from start node to goal node,
@@ -486,17 +458,12 @@ class GridPathFollowerNode(Node):
         """
         start_idx = graph.index_of(start)
         goal_idx = graph.index_of(goal)
-
         def h(i: Index) -> float:
-            x1, y1 = graph.coord_of(i);
-            x2, y2 = graph.coord_of(goal_idx)
+            x1, y1 = graph.coord_of(i); x2, y2 = graph.coord_of(goal_idx)
             return math.hypot(x2 - x1, y2 - y1)
-
         def c(i: Index, j: Index) -> float:
-            x1, y1 = graph.coord_of(i);
-            x2, y2 = graph.coord_of(j)
+            x1, y1 = graph.coord_of(i); x2, y2 = graph.coord_of(j)
             return math.hypot(x2 - x1, y2 - y1)
-
         open_heap = [(h(start_idx), start_idx)]
         came: Dict[Index, Index] = {}
         g = {start_idx: 0.0}
@@ -532,8 +499,7 @@ class GridPathFollowerNode(Node):
         Returns:
             (x, y) of the closest node in the GridGraph.
         """
-        best = None;
-        best_d = float('inf')
+        best = None; best_d = float('inf')
         for xy in self.graph.coord2idx.keys():
             d = math.dist(p, xy)
             if d < best_d: best_d = d; best = xy
@@ -632,20 +598,20 @@ class GridPathFollowerNode(Node):
         """
         if not self.scan:
             return True
-
+            
         rel_angle = angle_wrap(seg_dir_yaw - self.yaw)
         angle_min = self.scan.angle_min
         angle_inc = self.scan.angle_increment
-
+        
         for i, r in enumerate(self.scan.ranges):
             if math.isinf(r) or math.isnan(r) or r < self.scan.range_min:
                 continue
             ray_angle = angle_wrap(angle_min + i * angle_inc)
             if abs(angle_wrap(ray_angle - rel_angle)) < math.radians(15):
-                if r < 0.25: 
+                if r < 0.2: 
                     return False
         return True
-
+    
     # --- TODO: YOUR CODE HERE: Implement the function to generate the lookahead point away from obstacles  ---
     def obstacle_avoided_target(self, robot_pos: Coord, seg_dir_yaw: float) -> Coord:
         """
@@ -660,8 +626,7 @@ class GridPathFollowerNode(Node):
         Returns:
             Target (x, y) in world/odom frame.
         """
-            
-        target = lookahead_point(self.full_path, robot_pos, self.lookahead_dist)
+       target = lookahead_point(self.full_path, robot_pos, self.lookahead_dist)
 
         front_limit = 0.65
         front_angle = math.radians(15)
@@ -678,6 +643,8 @@ class GridPathFollowerNode(Node):
             if math.isinf(r) or math.isnan(r) or r < self.scan.range_min:
                 continue
 
+            #if r < self.scan.range_min or r > self.scan.range_max:
+             #   continue
 
             scan_angle = self.scan.angle_min + i * self.scan.angle_increment
 
@@ -693,7 +660,6 @@ class GridPathFollowerNode(Node):
             elif -side_max_angle < rel_angle < -side_min_angle:
                 right_min = min(right_min, r)
 
-
         if not obstacle_ahead:
             return target
 
@@ -708,7 +674,6 @@ class GridPathFollowerNode(Node):
         else:
             return target
 
-
         normal_x = -math.sin(seg_dir_yaw)
         normal_y = math.cos(seg_dir_yaw)
 
@@ -718,11 +683,9 @@ class GridPathFollowerNode(Node):
         )
 
         return target
-
-
+    
     # --- TODO: YOUR CODE HERE: controller used for TurtleBot ---
-    def turtlebot_control(self, robot_pos: Coord, robot_h: float, target: Coord, dt: float, Ld: float) -> Tuple[
-        float, float]:
+    def turtlebot_control(self, robot_pos: Coord, robot_h: float, target: Coord, dt: float, Ld: float) -> Tuple[float, float]:
         """
         Compute (v, w) commands that blend pure-pursuit with PID:
 
@@ -756,7 +719,7 @@ class GridPathFollowerNode(Node):
         w_cmd = 0.5 * w_pursuit + 0.5 * w_pid
         v_cmd = float(np.clip(v_cmd, 0.0, self.v_max))
         w_cmd = float(np.clip(w_cmd, -self.w_max, self.w_max))
-
+        
         return v_cmd, w_cmd
 
     # --- Publisher helpers ---
@@ -768,9 +731,7 @@ class GridPathFollowerNode(Node):
             v: linear velocity (m/s), applied to msg.linear.x.
             w: angular velocity (rad/s), applied to msg.angular.z.
         """
-        msg = Twist();
-        msg.linear.x = float(v);
-        msg.angular.z = float(w)
+        msg = Twist(); msg.linear.x = float(v); msg.angular.z = float(w)
         self.cmd_pub.publish(msg)
 
     def publish_stop(self):
@@ -788,7 +749,7 @@ class GridPathFollowerNode(Node):
             robot: optional (x, y) turtlebot position to plot.
             target: optional (x, y) target point to plot.
         """
-
+       
         extra = [self.start_pos, self.goal_pos]
         if robot: extra.append(robot)
         if target: extra.append(target)
@@ -816,14 +777,13 @@ class GridPathFollowerNode(Node):
             cv2.arrowedLine(img, pr, to_px(hx, hy), (0, 165, 255), 2, tipLength=0.3)
         # lookahead target (blue)
         if target is not None:
-            cv2.circle(img, to_px(*target), 7, (200, 0, 0), -1)
-            # HUD
+            cv2.circle(img, to_px(*target), 7, (200, 0, 0), -1) 
+        # HUD
         cv2.putText(img, f"Mode: {self.mode}", (20, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (20, 20, 20), 2)
         img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        cv2.imshow(self.win, img);
-        cv2.waitKey(1)
-
+        cv2.imshow(self.win, img); cv2.waitKey(1)
+    
     # --- Main control loop ----
     def control_step(self):
         """
@@ -842,7 +802,7 @@ class GridPathFollowerNode(Node):
 
         # --- Current turtlebot position ---
         robot_position = (self.x, self.y)
-        robot_heading = self.yaw
+        robot_heading  = self.yaw
 
         # --- Check if goal reached ---
         if math.dist(robot_position, self.goal_pos) < self.goal_tol:
@@ -861,13 +821,12 @@ class GridPathFollowerNode(Node):
             self.dwell_until = None
 
         # --- Find the current path segment and its properties ---
-        _, seg_idx, _ = nearest_point_on_polyline(self.full_path,
-                                                  robot_position)  # which path segment (between two waypoints) the turtlebot is currently on
-        ga = self.full_path[seg_idx]  # segment’s start point
-        gb = self.full_path[seg_idx + 1]  # segment’s end point
-        seg_vec = (gb[0] - ga[0], gb[1] - ga[1])  # vector pointing from a → b (i.e. local forward direction)
-        seg_dir_yaw = math.atan2(seg_vec[1], seg_vec[0])  # heading (yaw angle) of this segment in the world frame
-        dist_to_b = math.dist(robot_position, gb)  # robot’s straight-line distance to the next waypoint (b)
+        _, seg_idx, _ = nearest_point_on_polyline(self.full_path, robot_position) # which path segment (between two waypoints) the turtlebot is currently on
+        ga = self.full_path[seg_idx]     # segment’s start point
+        gb = self.full_path[seg_idx + 1] # segment’s end point
+        seg_vec = (gb[0] - ga[0], gb[1] - ga[1]) # vector pointing from a → b (i.e. local forward direction)
+        seg_dir_yaw = math.atan2(seg_vec[1], seg_vec[0]) # heading (yaw angle) of this segment in the world frame
+        dist_to_b = math.dist(robot_position, gb) # robot’s straight-line distance to the next waypoint (b)
 
         # --- Check arrival at the node 'b' and (Optional) pause motion ---
         if dist_to_b <= self.node_tol:
@@ -881,8 +840,8 @@ class GridPathFollowerNode(Node):
         # --- MODE: REPLAN ---
         if self.mode == 'REPLAN':
             self.publish_stop()
-            # TODO: YOUR CODE HERE:
-            # ~2 lines: Remove the edge if the edge is blocked
+            # TODO: YOUR CODE HERE: 
+            # ~2 lines: Remove the edge if the edge is blocked 
             # ~1 line:  Set start_from to the previous node
             # ~1 line:  Replan the global path from new start point and store it in self.full_path.
             # ~1 line:  Set the mode back to FOLLOW
@@ -902,9 +861,8 @@ class GridPathFollowerNode(Node):
 
             back_path = [robot_position, temp_goal]
             target = lookahead_point(back_path, robot_position, self.lookahead_dist)
-            v_cmd, w_cmd = self.turtlebot_control(robot_position, robot_heading, target, dt,
-                                                  self.lookahead_dist)  # Get linear and angular velocity values from your control block
-            self.publish_cmd(v_cmd, w_cmd)  # publish the velocities
+            v_cmd, w_cmd = self.turtlebot_control(robot_position, robot_heading, target, dt, self.lookahead_dist) # Get linear and angular velocity values from your control block
+            self.publish_cmd(v_cmd, w_cmd) # publish the velocities
             self.draw_scene(robot=robot_position, target=target)
 
             # TODO: YOUR CODE HERE: ~3 lines
@@ -919,8 +877,8 @@ class GridPathFollowerNode(Node):
         if not self.is_passable(seg_dir_yaw):
             # TODO: YOUR CODE HERE: ~4 lines
             # 1. Stop the turtlebot immediately
-            # 2. set 'prev_node' to 'ga'
-            # 3. set 'block_edge' to '(ga, gb)'
+            # 2. set 'prev_node' to 'ga' 
+            # 3. set 'block_edge' to '(ga, gb)' 
             # 4. set mode to 'BACKTRACK'
             self.publish_stop()
             self.prev_node = ga
@@ -928,12 +886,10 @@ class GridPathFollowerNode(Node):
             self._set_mode('BACKTRACK')
             self.draw_scene(robot=robot_position)
             return
-
-        target = self.obstacle_avoided_target(robot_position,
-                                              seg_dir_yaw)  # Get obstacle avoided lookahead target point
-        v_cmd, w_cmd = self.turtlebot_control(robot_position, robot_heading, target, dt,
-                                              self.lookahead_dist)  # Get linear and angular velocity values from your control block
-        self.publish_cmd(v_cmd, w_cmd)  # publish the velocities
+            
+        target = self.obstacle_avoided_target(robot_position, seg_dir_yaw) # Get obstacle avoided lookahead target point
+        v_cmd, w_cmd = self.turtlebot_control(robot_position, robot_heading, target, dt, self.lookahead_dist) # Get linear and angular velocity values from your control block
+        self.publish_cmd(v_cmd, w_cmd) # publish the velocities
         self.draw_scene(robot=robot_position, target=target)
 
 
@@ -950,7 +906,6 @@ def main():
         node.destroy_node()
         cv2.destroyAllWindows()
         rclpy.shutdown()
-
 
 if __name__ == "__main__":
     main()
