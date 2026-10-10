@@ -347,10 +347,10 @@ class GridPathFollowerNode(Node):
         # TODO: YOUR CODE HERE: ~3 lines: set the lookahead distance for pure-pursuit based control, and the maximum allowed linear and angular velocities 
         self.lookahead_dist = 0.25
         self.v_max = 0.3
-        self.w_max = 1.5
+        self.w_max = 2.5
         # ...
         # TODO: YOUR CODE HERE: ~1-2 lines: set your PID controller/s for linear/angular motion
-        self.pid_angular = PID(kp=1.5, ki=0.0, kd=0.05, i_limit=0.5)
+        self.pid_angular = PID(kp=3, ki=0.1, kd=0.1, i_limit=0.5)
 
         # --- Helpers to halt turtlebot ---
         self.dwell_s = 0.5
@@ -608,7 +608,7 @@ class GridPathFollowerNode(Node):
                 continue
             ray_angle = angle_wrap(angle_min + i * angle_inc)
             if abs(angle_wrap(ray_angle - rel_angle)) < math.radians(15):
-                if r < 0.2: 
+                if r < 0.25: 
                     return False
         return True
     
@@ -626,7 +626,7 @@ class GridPathFollowerNode(Node):
         Returns:
             Target (x, y) in world/odom frame.
         """
-       target = lookahead_point(self.full_path, robot_pos, self.lookahead_dist)
+        target = lookahead_point(self.full_path, robot_pos, self.lookahead_dist)
 
         front_limit = 0.65
         front_angle = math.radians(15)
@@ -644,7 +644,7 @@ class GridPathFollowerNode(Node):
                 continue
 
             #if r < self.scan.range_min or r > self.scan.range_max:
-             #   continue
+            #   continue
 
             scan_angle = self.scan.angle_min + i * self.scan.angle_increment
 
